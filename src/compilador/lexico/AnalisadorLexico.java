@@ -19,6 +19,7 @@ public class AnalisadorLexico {
         PALAVRAS_CHAVE.put("funcao", TipoToken.FUNCAO);
         PALAVRAS_CHAVE.put("se", TipoToken.SE);
         PALAVRAS_CHAVE.put("entao", TipoToken.ENTAO);
+        PALAVRAS_CHAVE.put("senao", TipoToken.SENAO);
         PALAVRAS_CHAVE.put("enquanto", TipoToken.ENQUANTO);
         PALAVRAS_CHAVE.put("leia", TipoToken.LEIA);
         PALAVRAS_CHAVE.put("escreva", TipoToken.ESCREVA);
@@ -40,7 +41,7 @@ public class AnalisadorLexico {
         return codigoFonte.charAt(posicaoAtual);
     }
 
-    private void avancar() {
+    public void avancar() {
         posicaoAtual++;
     }
 
@@ -127,12 +128,25 @@ public class AnalisadorLexico {
                         return new Token(TipoToken.MAIOR_IGUAL, ">=", linha);
                     }
                     return new Token(TipoToken.MAIOR, ">", linha);
-                // Lidar com operadores lógicos '||' e '&&'
-                // Omitido por brevidade, mas seria similar aos outros operadores de 2 chars
+                case '&':
+                    avancar();
+                    if (charAtual() == '&') {
+                        avancar();
+                        return new Token(TipoToken.E_LOGICO, "&&", linha);
+                    }
+                    return new Token(TipoToken.ERRO, "&", linha);
+                case '|':
+                    avancar();
+                    if (charAtual() == '|') {
+                        avancar();
+                        return new Token(TipoToken.OU_LOGICO, "||", linha);
+                    }
             }
             
-            // Se nenhum token for reconhecido, lança um erro.
-            throw new RuntimeException("Caractere inesperado '" + c + "' na linha " + linha);
+            // Se chegou até aqui, o caractere é inválido.
+            String caractereInvalido = String.valueOf(c);
+            avancar(); // Pula o caractere inválido para não entrar em loop infinito
+            return new Token(TipoToken.ERRO, caractereInvalido, linha);
         }
         return new Token(TipoToken.EOF, "", linha); // Fim do arquivo
     }

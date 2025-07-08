@@ -1,0 +1,23 @@
+programa meu_programa_de_arquivo;
+
+/* Este programa foi lido de um arquivo externo.
+*/
+
+int a, b, resultado;
+bool condicao;
+
+{
+   leia(a);
+   leia(b);
+   
+   resultado = a && b;
+   condicao = resultado > 100;
+   
+   se (condicao) {
+      escreva(resultado);
+   } entao {
+      escreva(0);
+   }
+   
+   @ # /* Caracteres para testar a detecção de erro. */
+}

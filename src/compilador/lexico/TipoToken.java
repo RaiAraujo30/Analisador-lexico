@@ -2,7 +2,7 @@ package compilador.lexico;
 
 public enum TipoToken {
     // Palavras-chave
-    PROGRAMA, INT, BOOL, PROCEDIMENTO, FUNCAO, SE, ENTAO, ENQUANTO,
+    PROGRAMA, INT, BOOL, PROCEDIMENTO, FUNCAO, SE,SENAO, ENTAO, ENQUANTO,
     LEIA, ESCREVA, VERDADEIRO, FALSO, PARE, CONTINUE, RETORNE,
 
     // Identificadores e Números
@@ -17,6 +17,9 @@ public enum TipoToken {
 
     // Operadores Aritméticos e Lógicos
     MAIS, MENOS, VEZES, DIVISAO, E_LOGICO, OU_LOGICO, NAO_LOGICO,
+
+    // erro 
+    ERRO,
 
     // Fim de Arquivo
     EOF
