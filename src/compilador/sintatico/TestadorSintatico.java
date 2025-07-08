@@ -2,27 +2,20 @@ package compilador.sintatico;
 
 import compilador.lexico.AnalisadorLexico;
 import compilador.sintatico.exceptions.SyntaxError;
-
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class TestadorSintatico {
     public static void main(String[] args) {
-        String codigoFonte =
-            "programa exemplo;\n" +
-            "int x, y;\n" +
-            "funcao void soma(int a, int b) {\n" +
-            "    retorne a + b;\n" +
-            "}\n" +
-            "procedimento mostra(bool f) {\n" +
-            "    se (f) entao {\n" +
-            "        escreva(x);\n" +
-            "    } senao {\n" +
-            "        escreva(y);\n" +
-            "    }\n" +
-            "}\n" +
-            "{\n" +
-            "    x = soma(3, 4);\n" +
-            "    mostra(x > 5);\n" +
-            "}\n";
+        String nomeDoArquivo = "teste_sintatico.txt";
+        String codigoFonte;
+        try {
+            codigoFonte = Files.readString(Paths.get(nomeDoArquivo));
+        } catch (IOException e) {
+            System.err.println("Erro ao ler arquivo '" + nomeDoArquivo + "': " + e.getMessage());
+            return;
+        }
 
         System.out.println("--- INICIANDO ANÁLISE SINTÁTICA ---");
         AnalisadorLexico lexico = new AnalisadorLexico(codigoFonte);

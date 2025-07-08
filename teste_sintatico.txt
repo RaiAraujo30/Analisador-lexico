@@ -1,0 +1,30 @@
+programa exemplo;
+/* Comentario*/
+int x, y;
+x=10;
+funcao int soma(int a, int b) {
+    int resultado;
+    resultado = a + b;
+}
+procedimento semParametros() {}
+procedimento mostra(bool f) {
+    se (f) entao {
+        escreva(x);
+        escreva(resultado);
+    } senao {
+        escreva(y);
+    }
+} 
+int l;
+l = 0;
+bool t;
+enquanto (l < 5) {
+    se (x > y) entao {
+        escreva(x);
+        t = true;
+        pare;
+    }
+    l = l + 1;
+}
+x = soma(3, 4);
+mostra(x > 5);

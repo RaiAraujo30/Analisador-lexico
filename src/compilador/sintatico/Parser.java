@@ -7,9 +7,6 @@ import compilador.sintatico.exceptions.SyntaxError;
 import compilador.tabela.Simbolo;
 import compilador.tabela.TabelaDeSimbolos;
 
-/**
- * Analisador sintático LL(1) recursivo preditivo
- */
 public class Parser {
     private final AnalisadorLexico lexer;
     private Token lookahead;
@@ -33,37 +30,33 @@ public class Parser {
         throw new SyntaxError("Erro sintático na linha " + lookahead.linha + ": " + msg);
     }
 
-    /**
-     * Ponto de entrada do parser
-     * <programa> ::= programa IDENT ';' <decls> <corpo> EOF
-     */
     public void parsePrograma() throws SyntaxError {
+
         match(TipoToken.PROGRAMA);
         match(TipoToken.IDENTIFICADOR);
         match(TipoToken.PONTO_E_VIRGULA);
-        tabela.entrarEscopo(); // escopo global do programa
-        parseDecls(); // declarações globais
-        parseCorpo(); // corpo principal
-        if (lookahead.tipo != TipoToken.EOF)
-            error("EOF esperado após fim do corpo");
-        tabela.sairEscopo();
-    }
 
-    /**
-     * <decls> ::= { <decl> }
-     */
-    private void parseDecls() throws SyntaxError {
-        while (lookahead.tipo == TipoToken.INT
-                || lookahead.tipo == TipoToken.BOOL
-                || lookahead.tipo == TipoToken.PROCEDIMENTO
-                || lookahead.tipo == TipoToken.FUNCAO) {
-            parseDecl();
+        tabela.entrarEscopo();
+
+        while (lookahead.tipo != TipoToken.EOF) {
+            if (lookahead.tipo == TipoToken.INT || lookahead.tipo == TipoToken.BOOL) {
+                parseDeclVar();
+            } else if (lookahead.tipo == TipoToken.PROCEDIMENTO
+                    || lookahead.tipo == TipoToken.FUNCAO) {
+                parseDecl();
+            } else if (isStartCmd(lookahead.tipo)) {
+                parseCmd(); // qualquer comando que existe (atribuição, if...
+            } else {
+                error("Esperado declVar, declRotina ou comando mas veio " + lookahead.tipo);
+            }
         }
+
+        tabela.sairEscopo();
+
+        match(TipoToken.EOF);
     }
 
-    /**
-     * <decl> ::= <declVar> | <declProcedimento> | <declFuncao>
-     */
+
     private void parseDecl() throws SyntaxError {
         if (lookahead.tipo == TipoToken.INT || lookahead.tipo == TipoToken.BOOL) {
             parseDeclVar();
@@ -76,9 +69,7 @@ public class Parser {
         }
     }
 
-    /**
-     * <declVar> ::= (int | bool) IDENT { ',' IDENT } ';'
-     */
+
     private void parseDeclVar() throws SyntaxError {
         TipoToken tipo = lookahead.tipo;
         match(tipo);
@@ -94,9 +85,6 @@ public class Parser {
         match(TipoToken.PONTO_E_VIRGULA);
     }
 
-    /**
-     * <declProcedimento> ::= procedimento IDENT '(' [parametros] ')' <corpo>
-     */
     private void parseDeclProcedimento() throws SyntaxError {
         match(TipoToken.PROCEDIMENTO);
         String nome = lookahead.lexema;
@@ -112,16 +100,14 @@ public class Parser {
         tabela.sairEscopo();
     }
 
-    /**
-     * <declFuncao> ::= funcao (int | bool) IDENT '(' [parametros] ')' <corpo>
-     */
+
     private void parseDeclFuncao() throws SyntaxError {
         match(TipoToken.FUNCAO);
-        TipoToken tipoRet = lookahead.tipo;
-        match(tipoRet);
+        TipoToken tipoRetorno = lookahead.tipo;
+        match(tipoRetorno);
         String nome = lookahead.lexema;
         match(TipoToken.IDENTIFICADOR);
-        tabela.adicionar(new Simbolo(nome, tipoRet));
+        tabela.adicionar(new Simbolo(nome, tipoRetorno));
         match(TipoToken.ABRE_PARENTESES);
         tabela.entrarEscopo(); // escopo de parâmetros e corpo
         if (lookahead.tipo == TipoToken.INT || lookahead.tipo == TipoToken.BOOL) {
@@ -132,9 +118,7 @@ public class Parser {
         tabela.sairEscopo();
     }
 
-    /**
-     * <parametros> ::= (int | bool) IDENT { ',' (int | bool) IDENT }
-     */
+
     private void parseParametros() throws SyntaxError {
         TipoToken tipo = lookahead.tipo;
         match(tipo);
@@ -151,27 +135,38 @@ public class Parser {
         }
     }
 
-    /**
-     * <corpo> ::= '{' { <declVar> | <cmd> } '}'
-     */
+
     private void parseCorpo() throws SyntaxError {
         match(TipoToken.ABRE_CHAVES);
-        while (lookahead.tipo == TipoToken.INT || lookahead.tipo == TipoToken.BOOL) {
-            parseDeclVar();
-        }
-        while (isStartCmd(lookahead.tipo)) {
-            parseCmd();
+        while (lookahead.tipo == TipoToken.INT || lookahead.tipo == TipoToken.BOOL || isStartCmd(lookahead.tipo)) {
+            if (lookahead.tipo == TipoToken.INT || lookahead.tipo == TipoToken.BOOL) {
+                parseDeclVar();
+            } else {
+                parseCmd();
+            }
         }
         match(TipoToken.FECHA_CHAVES);
     }
 
     /**
-     * <cmd> ::= se '(' <expr> ')' entao <corpo> [senao <corpo>]
-     * | enquanto '(' <expr> ')' <corpo>
-     * | leia '(' IDENT ')' ';'
-     * | escreva '(' <expr> ')' ';'
-     * | pare ';' | continue ';' | retorne <expr> ';'
-     * | IDENT ( '=' <expr> | '(' [<listaExpr>] ')' ) ';'
+     * <comando> ::= (<comando atribuição>|
+        *       <chamada de procedimento> |
+        *       <comando condicional>     |
+        *       <comando enquanto>        |
+        *       <comando leitura>         |
+        *       <comando escrita>)
+     * 
+     * <comando atribuição> ::= <identificador> = <expressão>;
+     * <chamada de procedimento> ::= <identificador> ([<expressão>{, <expressão>}]);
+     * <chamada de função> ::= <identificador> ([<expressão> {, <expressão>}]);
+     * <comando condicional> ::= se (<expressão> ) { <comandos> } [entao {
+     * <comandos> }]
+     * <comando enquanto> ::= enquanto (<expressão>) { <comandos> [<comando de parada>] [<comando de continuação>]}
+     * 
+     * <comando leitura> ::= leia ( <identificador >);
+     * <comando escrita> ::= escreva (<expressão> );
+     * <comando de parada> ::= pare;
+     * <comando de continuação> ::= continue;
      */
     private void parseCmd() throws SyntaxError {
         switch (lookahead.tipo) {
@@ -259,16 +254,10 @@ public class Parser {
         };
     }
 
-    /**
-     * <expr> ::= <exprOr>
-     */
     private void parseExpr() throws SyntaxError {
         parseExprOr();
     }
 
-    /**
-     * <exprOr> ::= <exprAnd> { '||' <exprAnd> }
-     */
     private void parseExprOr() throws SyntaxError {
         parseExprAnd();
         while (lookahead.tipo == TipoToken.OU_LOGICO) {
@@ -277,21 +266,17 @@ public class Parser {
         }
     }
 
-    /**
-     * <exprAnd> ::= <exprRel> { '&&' <exprRel> }
-     */
+
     private void parseExprAnd() throws SyntaxError {
-        parseExprRel();
+        parseExprRelacional();
         while (lookahead.tipo == TipoToken.E_LOGICO) {
             match(TipoToken.E_LOGICO);
-            parseExprRel();
+            parseExprRelacional();
         }
     }
 
-    /**
-     * <exprRel> ::= <exprAdd> { ('==' | '!=' | '<' | '<=' | '>' | '>=') <exprAdd> }
-     */
-    private void parseExprRel() throws SyntaxError {
+
+    private void parseExprRelacional() throws SyntaxError {
         parseExprAdd();
         while (lookahead.tipo == TipoToken.IGUAL
                 || lookahead.tipo == TipoToken.DIFERENTE
@@ -317,9 +302,6 @@ public class Parser {
         }
     }
 
-    /**
-     * <exprMul> ::= <exprUnary> { ('*' | '/') <exprUnary> }
-     */
     private void parseExprMul() throws SyntaxError {
         parseExprUnary();
         while (lookahead.tipo == TipoToken.VEZES || lookahead.tipo == TipoToken.DIVISAO) {
@@ -329,9 +311,6 @@ public class Parser {
         }
     }
 
-    /**
-     * <exprUnary> ::= '!' <exprUnary> | '-' <exprUnary> | <exprPrimary>
-     */
     private void parseExprUnary() throws SyntaxError {
         if (lookahead.tipo == TipoToken.NAO_LOGICO) {
             match(TipoToken.NAO_LOGICO);
@@ -344,9 +323,6 @@ public class Parser {
         }
     }
 
-    /**
-     * <exprPrimary> ::= IDENT | NUMERO | verdadeiro | falso | '(' <expr> ')'
-     */
     private void parseExprPrimary() throws SyntaxError {
         if (lookahead.tipo == TipoToken.IDENTIFICADOR) {
             String nome = lookahead.lexema;
