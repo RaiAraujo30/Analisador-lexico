@@ -11,6 +11,8 @@ public class Parser {
     private final AnalisadorLexico lexer;
     private Token lookahead;
     private final TabelaDeSimbolos tabela;
+    private boolean inFunction = false;
+    private int inLoop = 0;
 
     public Parser(AnalisadorLexico lexer) {
         this.lexer = lexer;
@@ -56,11 +58,8 @@ public class Parser {
         match(TipoToken.EOF);
     }
 
-
     private void parseDecl() throws SyntaxError {
-        if (lookahead.tipo == TipoToken.INT || lookahead.tipo == TipoToken.BOOL) {
-            parseDeclVar();
-        } else if (lookahead.tipo == TipoToken.PROCEDIMENTO) {
+        if (lookahead.tipo == TipoToken.PROCEDIMENTO) {
             parseDeclProcedimento();
         } else if (lookahead.tipo == TipoToken.FUNCAO) {
             parseDeclFuncao();
@@ -68,7 +67,6 @@ public class Parser {
             error("Esperado declaração mas veio " + lookahead.tipo);
         }
     }
-
 
     private void parseDeclVar() throws SyntaxError {
         TipoToken tipo = lookahead.tipo;
@@ -100,7 +98,6 @@ public class Parser {
         tabela.sairEscopo();
     }
 
-
     private void parseDeclFuncao() throws SyntaxError {
         match(TipoToken.FUNCAO);
         TipoToken tipoRetorno = lookahead.tipo;
@@ -114,10 +111,11 @@ public class Parser {
             parseParametros();
         }
         match(TipoToken.FECHA_PARENTESES);
+        inFunction = true;
         parseCorpo();
+        inFunction = false;
         tabela.sairEscopo();
     }
-
 
     private void parseParametros() throws SyntaxError {
         TipoToken tipo = lookahead.tipo;
@@ -135,7 +133,6 @@ public class Parser {
         }
     }
 
-
     private void parseCorpo() throws SyntaxError {
         match(TipoToken.ABRE_CHAVES);
         while (lookahead.tipo == TipoToken.INT || lookahead.tipo == TipoToken.BOOL || isStartCmd(lookahead.tipo)) {
@@ -150,18 +147,19 @@ public class Parser {
 
     /**
      * <comando> ::= (<comando atribuição>|
-        *       <chamada de procedimento> |
-        *       <comando condicional>     |
-        *       <comando enquanto>        |
-        *       <comando leitura>         |
-        *       <comando escrita>)
+     * <chamada de procedimento> |
+     * <comando condicional> |
+     * <comando enquanto> |
+     * <comando leitura> |
+     * <comando escrita>)
      * 
      * <comando atribuição> ::= <identificador> = <expressão>;
      * <chamada de procedimento> ::= <identificador> ([<expressão>{, <expressão>}]);
      * <chamada de função> ::= <identificador> ([<expressão> {, <expressão>}]);
      * <comando condicional> ::= se (<expressão> ) { <comandos> } [entao {
      * <comandos> }]
-     * <comando enquanto> ::= enquanto (<expressão>) { <comandos> [<comando de parada>] [<comando de continuação>]}
+     * <comando enquanto> ::= enquanto (<expressão>) { <comandos> [<comando de
+     * parada>] [<comando de continuação>]}
      * 
      * <comando leitura> ::= leia ( <identificador >);
      * <comando escrita> ::= escreva (<expressão> );
@@ -183,11 +181,13 @@ public class Parser {
                 }
             }
             case ENQUANTO -> {
+                inLoop++;
                 match(TipoToken.ENQUANTO);
                 match(TipoToken.ABRE_PARENTESES);
                 parseExpr();
                 match(TipoToken.FECHA_PARENTESES);
                 parseCorpo();
+                inLoop--;
             }
             case LEIA -> {
                 match(TipoToken.LEIA);
@@ -204,14 +204,23 @@ public class Parser {
                 match(TipoToken.PONTO_E_VIRGULA);
             }
             case PARE -> {
+                if (inLoop == 0) {
+                    error("'pare' só pode aparecer dentro de um laço");
+                }
                 match(TipoToken.PARE);
                 match(TipoToken.PONTO_E_VIRGULA);
             }
             case CONTINUE -> {
+                if (inLoop == 0) {
+                    error("'continue' só pode aparecer dentro de um laço");
+                }
                 match(TipoToken.CONTINUE);
                 match(TipoToken.PONTO_E_VIRGULA);
             }
             case RETORNE -> {
+                if (!inFunction) {
+                    error("'retorne' só pode aparecer dentro de função");
+                }
                 match(TipoToken.RETORNE);
                 parseExpr();
                 match(TipoToken.PONTO_E_VIRGULA);
@@ -266,7 +275,6 @@ public class Parser {
         }
     }
 
-
     private void parseExprAnd() throws SyntaxError {
         parseExprRelacional();
         while (lookahead.tipo == TipoToken.E_LOGICO) {
@@ -274,7 +282,6 @@ public class Parser {
             parseExprRelacional();
         }
     }
-
 
     private void parseExprRelacional() throws SyntaxError {
         parseExprAdd();

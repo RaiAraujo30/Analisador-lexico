@@ -5,6 +5,7 @@ x=10;
 funcao int soma(int a, int b) {
     int resultado;
     resultado = a + b;
+    retorne resultado;
 }
 procedimento semParametros() {}
 procedimento mostra(bool f) {
